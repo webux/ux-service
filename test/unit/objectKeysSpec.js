@@ -1,8 +1,13 @@
 describe("objectKeys", function() {
     var injector = angular.injector(['app']),
         objectKeys = injector.get('objectKeys'),
-        obj = {name:'Wes', job:'developer'},
-        key = '{"job":"developer","name":"Wes"}';
+        obj = {
+            user: {
+                name:'Wes',
+                job:'developer'
+            }
+        },
+        key = '{"user":{"job":"developer","name":"Wes"}}';
     it("should put an object an its keys in alphabetical order json string", function() {
         var result = objectKeys.objectToKey(obj);
         expect(result).toBe(key);
@@ -10,16 +15,26 @@ describe("objectKeys", function() {
 
     it("should convert a key back to an object", function() {
         var result = objectKeys.keyToObject(key);
-        expect(result.name).toBe(obj.name);
-        expect(result.job).toBe(obj.job);
+        expect(result.user.name).toBe(obj.user.name);
+        expect(result.user.job).toBe(obj.user.job);
     });
 
     it("should walk a path", function() {
-        expect(objectKeys.walkPath({
-            user: {
-                name: 'Wes'
-            }
-        }, 'user.name')).toBe('Wes');
+        expect(objectKeys.walkPath(obj, 'user.name')).toBe('Wes');
+    });
+
+    it("hasPath should return true if that path exists", function() {
+        expect(objectKeys.hasPath(obj, 'user.name')).toBe(true);
+    });
+
+    it("hasPath should return false if that path does not exist", function() {
+        expect(objectKeys.hasPath(obj, 'user.foo')).toBe(false);
+    });
+
+    it("removePath should remove a path", function() {
+        var clone = angular.copy(obj);
+        objectKeys.removePath(clone, 'user.name');
+        expect(objectKeys.hasPath(clone, 'user.name')).toBe(false);
     });
 
     describe("filter", function() {

@@ -2,6 +2,24 @@
     'use strict';
 
     function ObjectKeys() {
+
+        function each(obj, callback) {
+            var i = 0, len;
+            if (obj.hasOwnProperty('length')) {
+                len = obj.length;
+                while (i < len) {
+                    callback(obj[i], i, obj);
+                    i += 1;
+                }
+            } else {
+                for (i in obj) {
+                    if (obj.hasOwnProperty(i)) {
+                        callback(obj[i], i, obj);
+                    }
+                }
+            }
+        }
+
         function getKeysInOrder(obj) {
             var ary = [],
                 i;
@@ -28,7 +46,11 @@
         }
 
         function objectToKey(obj) {
-            return angular.toJson(orderObjectProperties(obj));
+            var result = angular.toJson(orderObjectProperties(obj));
+            result = result.split('\\').join('');
+            result = result.split('"{').join('{');
+            result = result.split('}"').join('}');
+            return result;
         }
 
         function keyToObject(key) {
@@ -36,13 +58,57 @@
         }
 
         function walkPath(target, path) {
-            var parts = path.split('.'),
-                i = 0, len = parts.length;
+            var parts = path.split('.'), i = 0, len = parts.length;
             while(i < len && target.hasOwnProperty(parts[i])) {
                 target = target[parts[i]];
                 i += 1;
             }
             return target;
+        }
+
+        function hasPath(target, path) {
+            var parts = path.split('.'), i = 0, len = parts.length;
+            while(i < len && target.hasOwnProperty(parts[i])) {
+                target = target[parts[i]];
+                i += 1;
+            }
+            return i === len;
+        }
+
+        function removePath(target, path) {
+            var parts = path.split('.'), i = 0, len = parts.length;
+            while(i < len && target.hasOwnProperty(parts[i])) {
+                if (i === len - 1) {
+                    delete target[parts[i]];
+                } else {
+                    target = target[parts[i]];
+                }
+                i += 1;
+            }
+        }
+
+        function copyPath(target, path, result) {
+            var parts = path instanceof Array ? path : path.split('.'), key;
+            result = result || {};
+            if (parts.length) {
+                key = parts.shift();
+                target = target[key];
+                if (!result.hasOwnProperty(key)) {
+                    result[key] = createNew(target);
+                }
+                return copyPath(target, parts, result[key]);
+            }
+            return parts;
+        }
+
+        function createNew(target) {
+            var type = typeof target;
+            if (type === "array") {
+                return [];
+            } else if (type === "object") {
+                return {};
+            }
+            return target; // must be string or int.
         }
 
         function filter(params, filter) {
@@ -54,16 +120,22 @@
                     }
                 });
             } else if (filter) { // otherwise we assume object.
-                angular.forEach(filter, function (property) {
-                    data[property] = angular.copy(params[property]);
+                each(filter, function (property) {
+                    if (!hasPath(data, property)) {
+                        copyPath(params, property, data);
+                    }
                 });
             }
             return data;
         }
 
+        this.each = each;
         this.objectToKey = objectToKey;
         this.keyToObject = keyToObject;
         this.walkPath = walkPath;
+        this.hasPath = hasPath;
+        this.removePath = removePath;
+        this.copyPath = copyPath;
         this.filter = filter;
     }
 

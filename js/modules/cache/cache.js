@@ -14,22 +14,7 @@
      */
     var storage,
         objKeys,
-        each = function (obj, callback) {
-            var i = 0, len;
-            if (obj.hasOwnProperty('length')) {
-                len = obj.length;
-                while (i < len) {
-                    callback(obj[i], i, obj);
-                    i += 1;
-                }
-            } else {
-                for (i in obj) {
-                    if (obj.hasOwnProperty(i)) {
-                        callback(obj[i], i, obj);
-                    }
-                }
-            }
-        },
+        each,
         util = function () {
             var api = {};
 
@@ -103,16 +88,6 @@
         cacheUtil = function () {
             var api = {};
 
-            function filterPropertiesFromObject(params, properties) {
-                var data = angular.copy(params || {});// clone it.;
-                if (properties) {
-                    each(properties, function (property) {
-                        delete data[property];
-                    });
-                }
-                return data;
-            }
-
             function mergePaginatedCache(cacheData, paramsAsStr, limitOffset) {
                 var list;
                 if (limitOffset) {
@@ -184,7 +159,6 @@
                 return keyToMatch === newKey;
             }
 
-            api.filterPropertiesFromObject = filterPropertiesFromObject;
             api.mergePaginatedCache = mergePaginatedCache;
             return api;
         }();
@@ -192,8 +166,13 @@
     var cacheDefaultConfig = {
             enabled: true,
             paramsFilter: null, // can be object or function to filter params.
-            paginationOffsetPath: null, // the property from a paginated response that tells the offset
-            resultsArrayPath: null, // the property of the array to append to for pagination.
+            pagination: null,
+//            pagination: {
+//                offset: '',
+//                list:''
+//            },
+//            paginationOffsetPath: null, // the property from a paginated response that tells the offset
+//            resultsArrayPath: null, // the property of the array to append to for pagination.
             countLimit: 0,
             expireSeconds: 0,
             memoryLimit: 0
@@ -336,7 +315,6 @@
         function setCache(objOrStr, value) {
             var key = getKey(objOrStr);
             set(key, value);
-            throw new Error("FINISH MERGE PAGINATED CACHE");
             cacheUtil.mergePaginatedCache(memoryCache, key, getPaginationOffsetLimit(value));
 //            cleanUp();
         }
@@ -345,7 +323,7 @@
             if (typeof objOrStr === 'string') {
                 return objOrStr;
             }
-            objOrStr = cacheUtil.filterPropertiesFromObject(objOrStr, config.paramsFilter);
+            objOrStr = objKeys.filter(objOrStr, config.paramsFilter);
             integerizePaginationValue(objOrStr);
             return objKeys.objectToKey(objOrStr);
         }
@@ -361,16 +339,16 @@
         }
 
         function integerizePaginationValue(data) {
-            if (typeof data === "object" && config.paginationOffsetPath) { // always select the first page if getting a cached page response.
-                var path = config.paginationOffsetPath.split('.');
+            if (typeof data === "object" && config.pagination) { // always select the first page if getting a cached page response.
+                var path = config.pagination.offset.split('.');
                 var lastProperty = path.pop();
                 objKeys.walkPath(data, path.join('.'))[lastProperty] = getPaginationOffsetLimit(data);
             }
         }
 
         function getPaginationOffsetLimit(data) {
-            if (typeof data === "object" && config.paginationOffsetPath) { // always select the first page if getting a cached page response.
-                return parseInt(objKeys.walkPath(data, config.paginationOffsetPath), 10);
+            if (typeof data === "object" && config.pagination) { // always select the first page if getting a cached page response.
+                return parseInt(objKeys.walkPath(data, config.pagination.offset), 10);
             }
             return 0;
         }
@@ -472,6 +450,7 @@
     }
 
     angular.module('ngCache', []).service('cacheManager', ['$rootScope', 'objectKeys', 'dispatcher', 'logDispatcher', function ($rootScope, objectKeys, dispatcher, logDispatcher) {
+        each = objectKeys.each;
         var result = new ObjectCacheManager($rootScope, [dispatcher, logDispatcher]);
         objKeys = objectKeys;
         dispatcher(result);

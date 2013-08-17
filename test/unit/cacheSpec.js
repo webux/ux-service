@@ -15,16 +15,16 @@ describe("cache module", function () {
         expect(cacheObject).toBe(cacheManager.get('test'));
     });
 
-    it("should clear the cache object", function() {
+    it("should clear the cache object", function () {
         var test = cacheManager.get('test'), cleared = false;
-        test.removeAll = function() {
+        test.removeAll = function () {
             cleared = true;
         };
         cacheManager.clear('test');
         expect(cleared).toBe(true);
     });
 
-    it("destroy should destroy a cache", function() {
+    it("destroy should destroy a cache", function () {
         cacheManager.destroy('test');
         expect(cacheManager.get('test')).toBeUndefined();
     });
@@ -42,6 +42,11 @@ describe("cache module", function () {
             expect(cache.get('key')).toBe(value);
         });
 
+        it("cache.set should take a object as a key", function () {
+            cache.set({foo: "bobsYourUncle"}, 'value');
+            expect(cache.get({foo: "bobsYourUncle"})).toBe('value');
+        });
+
         it("cache.remove(key) should remove an entry", function () {
             cache.set('key', 'value');
             cache.remove('key');
@@ -54,8 +59,34 @@ describe("cache module", function () {
             expect(cache.get('key')).toBeUndefined();
         });
 
-        it("cache.getConfig should return a config object.", function () {
+        it("cache.get Config should return a config object.", function () {
             expect(cache.getConfig().enabled).toBe(true);
+        });
+
+        describe("paramsFilter", function () {
+
+            it("cache.set with an object key should filter params using config.paramsFilter as an object", function () {
+                var cache = cacheManager.create('filteredCache', {paramsFilter: ['foo']});
+                cache.set({foo: "bar", boo: "none"}, 'value');
+                expect(cache.get({foo: "bar"})).toBe('value');
+            });
+
+            it("cache.set with an object key should filter params using config.paramsFilter as a complex object", function () {
+                var cache = cacheManager.create('filteredCache', {paramsFilter: ['foo.foo']});
+                cache.set({foo: { foo: "bar"} , boo: {hoo:"none"}}, 'value');
+                expect(cache.get({foo: { foo: "bar"}})).toBe('value');
+            });
+
+            it("cache.set with an object key should filter params using config.paramsFilter as a function", function () {
+                var cache = cacheManager.create('filterCache', {paramsFilter: function(value, property, obj) {
+                    if (property === 'foo') {
+                        return true;
+                    }
+                }});
+                cache.set({foo: "bar", boo: "none"}, 'value');
+                expect(cache.get({foo: "bar"})).toBe('value');
+            });
+
         });
 
         describe("bytes", function () {
@@ -126,7 +157,7 @@ describe("cache module", function () {
                 cache = cacheManager.create('test', {});
             });
 
-            it("should store a timestamp when an item is set", function() {
+            it("should store a timestamp when an item is set", function () {
                 var now = Date.now();
                 cache.set('key', 'value');
                 expect(cache.getTime('key')).toBe(now);
@@ -140,14 +171,61 @@ describe("cache module", function () {
 
         describe("expired", function () {
             var cache;
-            beforeEach(function() {
+            beforeEach(function () {
                 cacheManager.clear('test');
-                cache = cacheManager.create('test', {expireSeconds:-1})
+                cache = cacheManager.create('test', {expireSeconds: -1})
             });
-            it("should not be able to get an expired item", function() {
+            it("should not be able to get an expired item", function () {
                 cache.set('key', 'value');
                 expect(cache.get('key')).toBeUndefined();
             });
-        })
+        });
+
+        describe("pagination", function () {
+            var keys = [
+                    'pagination{"page":0}',
+                    'pagination{"page":1}',
+                    'pagination{"page":2}'
+                ],
+                responses = [
+                    {
+                        "limit": 4,
+                        "items": [
+                            {"name": "item 1"},
+                            {"name": "item 2"},
+                            {"name": "item 3"},
+                            {"name": "item 4"}
+                        ]
+                    },
+                    {
+                        "limit": 4,
+                        "items": [
+                            {"name": "item 1"},
+                            {"name": "item 2"},
+                            {"name": "item 3"},
+                            {"name": "item 4"}
+                        ]
+                    },
+                    {
+                        "limit": 4,
+                        "items": [
+                            {"name": "item 1"},
+                            {"name": "item 2"},
+                            {"name": "item 3"},
+                            {"name": "item 4"}
+                        ]
+                    }
+                ];
+
+            beforeEach(function () {
+                cacheManager.clear('test');
+                cache = cacheManager.create('test', {paginate: {page: 'page', limit: 'limit', list: 'items'}})
+            });
+
+            it("should store the first paginated result in a new cache entry.", function () {
+                cache.set(keys[0], responses[0]);
+                expect(cache.get(keys[0])).toBe(responses[0]);
+            });
+        });
     });
 });
