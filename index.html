@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html ng-app="app">
+<head>
+    <title>AngularJS Service Queue Example</title>
+    <link rel="stylesheet" type="text/css" href="css/main.css">
+    <!--<script type="text/javascript" data-main="js/main" src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>-->
+    <script type="text/javascript" data-main="js/main" src="js/lib/angular.js"></script>
+    <script type="text/javascript" data-main="js/main" src="js/lib/angular-resource.js"></script>
+
+    <script type="text/javascript" data-main="js/main" src="js/modules/cache/cache.js"></script>
+    <script type="text/javascript" data-main="js/main" src="js/modules/cache/objectKeys.js"></script>
+    <script type="text/javascript" data-main="js/main" src="js/modules/serviceQueue/util.js"></script>
+    <script type="text/javascript" data-main="js/main" src="js/modules/performance/performance.js"></script>
+
+    <script type="text/javascript" data-main="js/main" src="js/modules/serviceQueue/angular-service-queue.js"></script>
+    <script type="text/javascript" data-main="js/main" src="js/modules/serviceQueue/ng-connection.js"></script>
+    <script type="text/javascript" data-main="js/main" src="js/modules/serviceQueue/queue.js"></script>
+    <script type="text/javascript" data-main="js/main" src="js/modules/serviceQueue/serviceFactory.js"></script>
+    <script type="text/javascript" data-main="js/main" src="js/modules/serviceQueue/events.js"></script>
+    <script type="text/javascript" data-main="js/main" src="js/modules/serviceQueue/dispatcher.js"></script>
+    <script type="text/javascript" data-main="js/main" src="js/modules/serviceQueue/logDispatcher.js"></script>
+    <script type="text/javascript" data-main="js/main" src="js/modules/addons/addons.js"></script>
+    <script type="text/javascript" data-main="js/main" src="js/modules/logger/SimpleLogger.js"></script>
+    <script type="text/javascript" data-main="js/main" src="js/modules/logger/eventLogger.js"></script>
+    <script src="js/app.js"></script>
+    <!--// END ADDONS //-->
+    <!--// controllers //-->
+    <script>
+        function CtrlA($scope, $service, cacheManager) {
+            $scope.status = "init";
+
+//            user.cache(true, 0, 1000); // cache true, limit, bytes, etc // TODO: this would be better to reduce the amount of functions. Keep API simple.
+//            user.cacheResults(true); // TODO: use the cache property passed to resource. Have both so you can turn cache on and off.
+//            user.cacheLimit(10);
+//            use.resultPattern...
+//TODO: use $options for offline stuff.
+//user.$options
+// user.get(params, data, OPTIONS, success, error); // allow to pass options as override on this call only.
+//TODO: make service recording to local storage for playback. and make so it can export so it can read in the json file.
+//TODO: great selling point for QA to record services and pass file back to developers.
+//TODO: Cancellable still has value. Maue sure it does a full abort.
+//TODO: localStorage with timestamp and ids of each storage so it is a lookup table. anything that doesn't have a timestamp gets remove. if it does have a timestamp it expires.
+
+/*  STORES. make so they can just change the stores and it will change what services are called.
+
+ var storeFile = file({
+ cacheBust: true,
+ delay: true,
+ maps: {
+ http://google.com/api: json/data.json
+ }
+ })
+
+ var storeMemory = memory()
+ var storeLocalStorage = localStorage()
+ var storeMongodb = mongodb()
+
+ // all should have enabled option
+ storeFile.enabled = false;
+
+ // order determins priority lookup
+ var user = $resource('http://google.com/api', [storeMemory, storeLocalStorage, storeFile, storeMongoDb]) // make so it can handle multiple stores. for backups.
+ */
+
+            $scope.processBlockingCalls = function () {
+                var user = $service('json/blocking/d:userId.json',
+                                {userId: '@id'},
+                                {
+                                    'get': {method: 'GET'},
+                                    'save': {method: 'POST'},
+                                    'query': {method: 'GET', isArray: true},
+                                    'remove': {method: 'DELETE'},
+                                    'delete': {method: 'DELETE'}
+                                },
+                                {
+                                    blocking: true,
+                                    //EACH OPTION can be a value or a function that returns it.
+                                    cacheBust: function (serviceCall) {
+                                        return {a: performance.now() };
+                                    },
+                                    delay: 1000 // used to prove they are happening in order.
+                                }
+                        ),
+                        usersService = $service('json/blocking/users.json', {}, {
+                                    fetch: {method: 'GET', isArray: true}
+                                },
+                                {
+                                    blocking: true,
+                                    cacheBust: true,
+                                    delay: 1000,
+                                    // TODO: make so that if another call enters from this same service it will drop this one
+                                    // from the queue if it is not processing and keep the new one in it's place.
+                                    replaceable: true
+
+                                });
+                $scope.user0 = user.get({userId: 0}, function (result) {
+                    console.log('SUCCESS! user === result is %s', $scope.user0 === result);
+                });
+                $scope.users = usersService.fetch({});
+                $scope.user1 = user.get({userId:1}, {
+                    delay: Math.random() * 1000 // vary the time for each response to simulate real world where they don't happen in order.
+                });
+                $scope.user2 = user.get({userId:1}, {
+                    delay: Math.random() * 1000 // vary the time for each response to simulate real world where they don't happen in order.
+                });
+            };
+        }
+    </script>
+</head>
+<body>
+
+<!--// this is an example with using tables //-->
+<div ng-controller="CtrlA">
+    {{status}}
+    <a href="javascript:void(0)" data-ng-click="processBlockingCalls()">Process Blocking Calls</a>
+
+    <div>{{user0.name}}</div>
+    <div>{{user1.name}}</div>
+    <div>{{user2.name}}</div>
+    <div data-ng-repeat="usr in users">{{usr.name}}</div>
+</div>
+</body>
+</html>
