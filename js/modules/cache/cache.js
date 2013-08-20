@@ -15,153 +15,7 @@
     var storage,
         objKeys,
         each,
-        util = function () {
-            var api = {};
-
-            function getSize(obj) {
-                return getBytesSize(sizeOfObject(obj));
-            }
-
-            /**
-             * Get the estimated size in memory of an object.
-             * @param {Object} value
-             * @param {Number=} level
-             * @returns {number}
-             */
-            function sizeOfObject(value, level) {
-                if (level == undefined) level = 0;
-                var bytes = 0,
-                    i;
-                if (value === null || value === undefined) {
-                    bytes = 0;
-                } else if (typeof value === 'boolean') {
-                    bytes = 4;
-                } else if (typeof value === 'string') {
-                    bytes = value.length * 2;
-                } else if (typeof value === 'number') {
-                    bytes = 8;
-                } else if (typeof value === 'object') {
-                    if (value['__visited__']) return 0;
-                    value['__visited__'] = 1;
-                    for (i in value) {
-                        if (value.hasOwnProperty(i)) {
-                            bytes += i.length * 2;
-                            bytes += 8; // an assumed existence overhead
-                            bytes += sizeOfObject(value[i], 1);
-                        }
-                    }
-                }
-
-                if (level == 0) {
-                    clearReferenceTo(value);
-                }
-                return bytes;
-            }
-
-            function clearReferenceTo(value) {
-                if (value && typeof value == 'object') {
-                    delete value['__visited__'];
-                    for (var i in value) {
-                        clearReferenceTo(value[i]);
-                    }
-                }
-            }
-
-            function getBytesSize(bytes) {
-                if (bytes > 1024 && bytes < 1024 * 1024) {
-                    return (bytes / 1024).toFixed(2) + "K";
-                }
-                else if (bytes > 1024 * 1024 && bytes < 1024 * 1024 * 1024) {
-                    return (bytes / (1024 * 1024)).toFixed(2) + "M";
-                }
-                else if (bytes > 1024 * 1024 * 1024) {
-                    return (bytes / (1024 * 1024 * 1024)).toFixed(2) + "G";
-                }
-                return bytes.toString();
-            }
-
-            api.getSize = getSize;
-            api.sizeOfObject = sizeOfObject;
-            api.getBytesSize = getBytesSize;
-            return api;
-        }(),
-        cacheUtil = function () {
-            var api = {};
-
-            function mergePaginatedCache(cacheData, paramsAsStr, limitOffset) {
-                var list;
-                if (limitOffset) {
-                    this.log("\t_mergePaginatedCache on %s", limitOffset);
-                    // the request is paginated. Load all of the pages that we have in order.
-                    list = [];
-                    var keyWithoutPagesParam = dropPropertyFromKey(paramsAsStr, limitOffset);
-                    each(cacheData, function (value, key) {
-                        self.log("\t%s === %s", keyWithoutPagesParam, key);
-                        if (doesKeyMatchWithoutParam(keyWithoutPagesParam, key, limitOffset)) {
-                            list.push(key);
-                        }
-                    });
-                    mergePaginatedCachePagesToFirstEntry(list);
-                }
-            }
-
-            function mergePaginatedCachePagesToFirstEntry(list) {
-                this.log("\t_mergePaginatedCachePagesToFirstEntry");
-                var listKey,
-                    cachedResult,
-                    cachedItem,
-                    mergeCachedItem,
-                    targetArray;
-                list = list.sort();
-                if (list.length) {
-                    cachedItem = get(list[0]);
-                    targetArray = getArrayFromObjectByPath(cachedItem.response.data, resultsArrayPath);
-                    while (list.length > 1) {// there must be more than one page to merge.
-                        listKey = list[1]; // grab the item at index 1. they are all merged into the item at index 0
-                        mergeCachedItem = get(listKey);
-                        cachedResult = getArrayFromObjectByPath(mergeCachedItem.response.data, resultsArrayPath);
-                        each(cachedResult, function (item) {
-                            cachedItem.time = mergeCachedItem.time; // since pages are loaded after. This will always be greater.
-                            targetArray.push(item); // need to push them all onto the first instance.
-                        });
-                        list.splice(1, 1);// remove the 2nd item every time. we need to add them in order.
-                        // now remove the cache key as well, because we don't need it anymore.
-                        remove(listKey);
-                    }
-                    calculateSize(cachedItem);
-                }
-            }
-
-            function getArrayFromObjectByPath(target, path) {
-                var ary;
-                if (path) {
-                    ary = ObjectKeys.walkPath(target, path);
-                } else if (get(target).response instanceof Array) {
-                    ary = get(target).response;
-                }
-                return ary;
-            }
-
-            /**
-             * Drop Property from json string.
-             * @param {String} key
-             * @param {String} property
-             * @private
-             */
-            function dropPropertyFromKey(key, property) {
-                var data = angular.fromJson(key);
-                delete data[property];
-                return angular.toJson(data);
-            }
-
-            function doesKeyMatchWithoutParam(keyToMatch, keyToRemovePropertyFrom, property) {
-                var newKey = dropPropertyFromKey(keyToRemovePropertyFrom, property);
-                return keyToMatch === newKey;
-            }
-
-            api.mergePaginatedCache = mergePaginatedCache;
-            return api;
-        }();
+        util;
 
     var cacheDefaultConfig = {
             enabled: true,
@@ -314,8 +168,10 @@
 
         function setCache(objOrStr, value) {
             var key = getKey(objOrStr);
-            set(key, value);
-            cacheUtil.mergePaginatedCache(memoryCache, key, getPaginationOffsetLimit(value));
+            if (config.pagination) {
+                value = applyPage(key, value);
+            }
+            set(key, angular.copy(value));
 //            cleanUp();
         }
 
@@ -324,7 +180,6 @@
                 return objOrStr;
             }
             objOrStr = objKeys.filter(objOrStr, config.paramsFilter);
-            integerizePaginationValue(objOrStr);
             return objKeys.objectToKey(objOrStr);
         }
 
@@ -338,15 +193,29 @@
             return false;
         }
 
-        function integerizePaginationValue(data) {
-            if (typeof data === "object" && config.pagination) { // always select the first page if getting a cached page response.
-                var path = config.pagination.offset.split('.');
-                var lastProperty = path.pop();
-                objKeys.walkPath(data, path.join('.'))[lastProperty] = getPaginationOffsetLimit(data);
+        function applyPage(key, value) {
+            var offset = getPaginationOffset(value), oldValue, oldList, newList, i, len;
+            if (offset) {
+                oldValue = getCache(key);
+                oldList = objKeys.walkPath(oldValue, config.pagination.list);
+                if (oldList.length >= offset) {
+                    i = 0;
+                    newList = objKeys.walkPath(value, config.pagination.list);
+                    len = newList.length;
+                    while (i < len) {
+                        oldList[i + offset] = newList[i];
+                        i += 1;
+                    }
+                    value = angular.copy(value);
+                    objKeys.setPathValue(value, config.pagination.list, oldList);
+                } else {
+                    throw new Error("Pagination offset start is at %s, however the list only has %s value in it.");
+                }
             }
+            return value;
         }
 
-        function getPaginationOffsetLimit(data) {
+        function getPaginationOffset(data) {
             if (typeof data === "object" && config.pagination) { // always select the first page if getting a cached page response.
                 return parseInt(objKeys.walkPath(data, config.pagination.offset), 10);
             }
@@ -449,8 +318,9 @@
         this.addStore = addStore;
     }
 
-    angular.module('ngCache', []).service('cacheManager', ['$rootScope', 'objectKeys', 'dispatcher', 'logDispatcher', function ($rootScope, objectKeys, dispatcher, logDispatcher) {
+    angular.module('ngCache', []).service('cacheManager', ['$rootScope', 'objectKeys', 'sizeUtil', 'dispatcher', 'logDispatcher', function ($rootScope, objectKeys, sizeUtil, dispatcher, logDispatcher) {
         each = objectKeys.each;
+        util = sizeUtil;
         var result = new ObjectCacheManager($rootScope, [dispatcher, logDispatcher]);
         objKeys = objectKeys;
         dispatcher(result);

@@ -87,6 +87,12 @@
             }
         }
 
+        function setPathValue(target, path, value) {
+            var parts = path.split('.'), endProp = parts.pop(),
+                obj = walkPath(target, parts.join('.'));
+            obj[endProp] = value;
+        }
+
         function copyPath(target, path, result) {
             var parts = path instanceof Array ? path : path.split('.'), key;
             result = result || {};
@@ -125,6 +131,8 @@
                         copyPath(params, property, data);
                     }
                 });
+            } else {
+                data = angular.copy(params);
             }
             return data;
         }
@@ -136,6 +144,7 @@
         this.hasPath = hasPath;
         this.removePath = removePath;
         this.copyPath = copyPath;
+        this.setPathValue = setPathValue;
         this.filter = filter;
     }
 

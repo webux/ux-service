@@ -39,7 +39,7 @@ describe("cache module", function () {
         it("cache.set should create an entry", function () {
             var value = {};
             cache.set('key', value);
-            expect(cache.get('key')).toBe(value);
+            expect(cache.get('key')).toBeDefined();
         });
 
         it("cache.set should take a object as a key", function () {
@@ -183,13 +183,13 @@ describe("cache module", function () {
 
         describe("pagination", function () {
             var keys = [
-                    'pagination{"page":0}',
-                    'pagination{"page":1}',
-                    'pagination{"page":2}'
+                    {url:'pagination', params: {"page":0}},
+                    {url:'pagination', params: {"page":1}},
+                    {url:'pagination', params: {"page":2}}
                 ],
                 responses = [
                     {
-                        "limit": 4,
+                        "offset": 0,
                         "items": [
                             {"name": "item 1"},
                             {"name": "item 2"},
@@ -198,33 +198,72 @@ describe("cache module", function () {
                         ]
                     },
                     {
-                        "limit": 4,
+                        "offset": 4,
                         "items": [
-                            {"name": "item 1"},
-                            {"name": "item 2"},
-                            {"name": "item 3"},
-                            {"name": "item 4"}
+                            {"name": "item 5"},
+                            {"name": "item 6"},
+                            {"name": "item 7"},
+                            {"name": "item 8"}
                         ]
                     },
                     {
-                        "limit": 4,
+                        "offset": 8,
                         "items": [
-                            {"name": "item 1"},
-                            {"name": "item 2"},
-                            {"name": "item 3"},
-                            {"name": "item 4"}
+                            {"name": "item 9"},
+                            {"name": "item 10"},
+                            {"name": "item 11"},
+                            {"name": "item 12"}
                         ]
                     }
                 ];
 
             beforeEach(function () {
-                cacheManager.clear('test');
-                cache = cacheManager.create('test', {paginate: {page: 'page', limit: 'limit', list: 'items'}})
+                cacheManager.destroy('test');
+                cache = cacheManager.create('test', {
+                    paramsFilter: ['url'],
+                    pagination: {
+                        offset: 'offset',
+                        list: 'items'}
+                })
             });
+
+            function add3() {
+                cache.set(keys[0], responses[0]);
+                cache.set(keys[1], responses[1]);
+                cache.set(keys[2], responses[2]);
+                return cache.get(keys[0]);
+            }
 
             it("should store the first paginated result in a new cache entry.", function () {
                 cache.set(keys[0], responses[0]);
-                expect(cache.get(keys[0])).toBe(responses[0]);
+                var result = cache.get(keys[0]);
+                expect(result.items.length).toBe(responses[0].items.length);
+                expect(result.items[0].name).toBe(responses[0].items[0].name);
+            });
+
+            it("should store the second paginated result in the same cache entry.", function () {
+                cache.set(keys[0], responses[0]);
+                cache.set(keys[1], responses[1]);
+                var result = cache.get(keys[0]).items, len = responses[0].items.length + responses[1].items.length
+                expect(result.length).toBe(len);
+                expect(result[0].name).toBe(responses[0].items[0].name);
+                expect(result[len - 1].name).toBe(responses[1].items[responses[1].items.length - 1].name);
+            });
+
+            it("should store the third paginated result in the same cache entry.", function () {
+                var result = add3(), len = responses[0].items.length + responses[1].items.length + responses[2].items.length;
+                expect(result.items.length).toBe(len);
+                expect(result.items[0].name).toBe(responses[0].items[0].name);
+                expect(result.items[len - 1].name).toBe(responses[2].items[responses[2].items.length - 1].name);
+            });
+
+            it("should store the correct amount of memory for 3 paginated requests", function () {
+                var obj = {offset:0, items:[]},
+                    sizeUtil = injector.get('sizeUtil'),
+                    result = add3();
+                obj.items = obj.items.concat(responses[0].items, responses[1].items, responses[2].items);
+                expect(sizeUtil.getSize(obj)).toBe('1.02K');
+                expect(sizeUtil.getSize(result)).toBe('1.02K');
             });
         });
     });
