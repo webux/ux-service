@@ -73,12 +73,12 @@ describe("cache module", function () {
 
             it("cache.set with an object key should filter params using config.paramsFilter as a complex object", function () {
                 var cache = cacheManager.create('filteredCache', {paramsFilter: ['foo.foo']});
-                cache.set({foo: { foo: "bar"} , boo: {hoo:"none"}}, 'value');
+                cache.set({foo: { foo: "bar"}, boo: {hoo: "none"}}, 'value');
                 expect(cache.get({foo: { foo: "bar"}})).toBe('value');
             });
 
             it("cache.set with an object key should filter params using config.paramsFilter as a function", function () {
-                var cache = cacheManager.create('filterCache', {paramsFilter: function(value, property, obj) {
+                var cache = cacheManager.create('filterCache', {paramsFilter: function (value, property, obj) {
                     if (property === 'foo') {
                         return true;
                     }
@@ -183,9 +183,9 @@ describe("cache module", function () {
 
         describe("pagination", function () {
             var keys = [
-                    {url:'pagination', params: {"page":0}},
-                    {url:'pagination', params: {"page":1}},
-                    {url:'pagination', params: {"page":2}}
+                    {url: 'pagination', params: {"page": 0}},
+                    {url: 'pagination', params: {"page": 1}},
+                    {url: 'pagination', params: {"page": 2}}
                 ],
                 responses = [
                     {
@@ -258,12 +258,51 @@ describe("cache module", function () {
             });
 
             it("should store the correct amount of memory for 3 paginated requests", function () {
-                var obj = {offset:0, items:[]},
+                var obj = {offset: 0, items: []},
                     sizeUtil = injector.get('sizeUtil'),
                     result = add3();
                 obj.items = obj.items.concat(responses[0].items, responses[1].items, responses[2].items);
                 expect(sizeUtil.getSize(obj)).toBe('1.02K');
                 expect(sizeUtil.getSize(result)).toBe('1.02K');
+            });
+        });
+
+        describe("stores", function () {
+            var store;
+
+            beforeEach(function () {
+                store = {
+                    values: {},
+                    put: function (key, value) {
+                        this.values[key] = value;
+                    },
+                    get: function (key) {
+                        return this.values[key];
+                    },
+                    remove: function(key) {
+                        this.value[key] = null;
+                    }
+                }
+            });
+
+            it("should be able to add stores to the cache", function() {
+
+            });
+
+            it("should put to all stores added to that cache", function() {
+
+            });
+
+            it("should update the store when the value changes", function() {
+
+            });
+
+            it("should remove from the store", function() {
+
+            });
+
+            it("should clear a store", function() {
+
             });
         });
     });

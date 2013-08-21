@@ -1,4 +1,4 @@
-angular.module('app', ['eventLogger', 'ngService', 'ngCache']).
+angular.module('app', ['eventLogger', 'ngService', 'ngCache', 'ngLocalStorage', 'ngCookieStore']).
     run(['$injector', 'eventLogger', '$serviceQueue', 'connection', 'queue', 'logDispatcher', function ($injector, eventLogger, $serviceQueue, connection, queue, logDispatcher) {
         logDispatcher.enableLogging(1);
         eventLogger('serviceQueue', $serviceQueue.events, 'green', eventLogger.levels.DEBUG);

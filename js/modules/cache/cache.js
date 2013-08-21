@@ -1,23 +1,22 @@
 (function () {
     'use strict';
-//TODO: they should just define this object. So they define to the interface. Then pass this in.
-    function LocalStorage(localStorageManager, methodMap) {
-        this.isSupported = methodMap.isSupported.bind(localStorageManager);
-        this.get = methodMap.get.bind(localStorageManager);
-        this.set = methodMap.set.bind(localStorageManager);
-        this.remove = methodMap.remove.bind(localStorageManager);
-        this.removeAll = methodMap.removeAll.bind(localStorageManager);
-    }
 
     /**
-     * @type {LocalStorage}
+     * @type {Object}
      */
-    var storage,
-        objKeys,
+    var objKeys,
+        /**
+         * @type {Function}
+         */
         each,
-        util;
-
-    var cacheDefaultConfig = {
+        /**
+         * @type {Object
+         */
+        util,
+        /**
+         * @type {Object}
+         */
+        cacheDefaultConfig = {
             enabled: true,
             paramsFilter: null, // can be object or function to filter params.
             pagination: null,
@@ -25,19 +24,117 @@
 //                offset: '',
 //                list:''
 //            },
-//            paginationOffsetPath: null, // the property from a paginated response that tells the offset
-//            resultsArrayPath: null, // the property of the array to append to for pagination.
             countLimit: 0,
             expireSeconds: 0,
             memoryLimit: 0
         },
+        /**
+         * @type {Object}
+         */
         cacheEvents = {
             LOG: 'cache::log',
             INFO: 'cache::info',
             WARN: 'cache::warn',
             ERROR: 'cache::error',
             CHANGE: 'cache::change'
-        };
+        },
+        storeUtil = function () {
+            var api = {};
+
+            function isStore(store) {
+                return (store.isSupported && store.hasKey && store.put && store.get && store.getAll && store.remove && store.removeAll);
+            }
+
+            function areStores(stores) {
+                var i = 0, len = stores.length, result = true;
+                while (result && i < len) {
+                    result = isStore(stores[i]);
+                    i += 1;
+                }
+                return result;
+            }
+
+            api.isStore = isStore;
+            api.areStores = areStores;
+            return api;
+        }();
+
+    function createStore() {
+        var stores = [],
+            storage = {};
+
+        function addStores(storeListOrStore) {
+            if (storeListOrStore instanceof Array && storeUtil.areStores(storeListOrStore)) {
+                stores = stores.concat(storeListOrStore);
+            } else if (storeUtil.isStore(storeListOrStore)) {
+                stores.push(storeListOrStore);
+            } else {
+                throw new Error("Invalid Store API. Store expects every store to have isSupported, hasKey, put, get, getAll, remove, and removeAll methods defined.");
+            }
+        }
+
+        function getStores() {
+            return storage;
+        }
+
+        function put(key, value) {
+            var i = 0, len = stores.length;
+            while (i < len) {
+                stores[i].put(key, value); // add it to every store.
+                i += 1;
+            }
+        }
+
+        function get(key) {
+            var i = 0, len = stores.length, store;
+            while (i < len) {
+                store = stores[i];
+                if (store.hasKey(key)) { // get the value from the first one that has it defined.
+                    return store.get(key); // so it falls back in the order they are added.
+                }
+                i += 1;
+            }
+            return undefined;
+        }
+
+        function getAll() {
+            var i = 0, len = stores.length, store, all;
+            while (i < len) {
+                store = stores[i];
+                all = store.getAll();
+                if (storeUtil.count(all)) {
+                    return all;
+                }
+                i += 1;
+            }
+            return undefined;
+        }
+
+        function remove(key) {
+            var i = 0, len = stores.length;
+            while (i < len) {
+                stores[i].remove(key); // add it to every store.
+                i += 1;
+            }
+        }
+
+        function removeAll() {
+            var i = 0, len = stores.length;
+            while (i < len) {
+                stores[i].removeAll(); // add it to every store.
+                i += 1;
+            }
+        }
+
+        storage.addStores = addStores;
+        storage.getStores = getStores;
+        storage.put = put;
+        storage.get = get;
+        storage.getAll = getAll;
+        storage.remove = remove;
+        storage.removeAll = removeAll;
+        return storage;
+    }
 
     function createCacheItem(value) {
         return {
@@ -47,14 +144,15 @@
         };
     }
 
-    function Cache(manager, name) {
+    function Cache(name, onChange) {
         var api = {},
             memoryCache = {},
             config = {},
             size = {
                 count: 0,
                 bytes: 0
-            };
+            },
+            storage = createStore();
         // apply defaults.
         angular.extend(config, cacheDefaultConfig);
 
@@ -71,29 +169,20 @@
         }
 
         function get(cacheKey) {
-            var result = memoryCache[cacheKey],
-                storageKey;
-            if (storage && result) {
-                storageKey = getStorageKey(cacheKey);
-                result.response = storage.get(storageKey);
-                api.log("localStorage get for %s", storageKey);
+            var result = memoryCache[cacheKey];
+            if (result === undefined) {
+                result = storage.get(cacheKey);
             }
             return result;
         }
 
         function set(cacheKey, value) {
-            var storageKey,
-                cacheItem = createCacheItem(value);
+            var cacheItem = createCacheItem(value);
             subtract(memoryCache[cacheKey]);
             add(cacheItem);
             memoryCache[cacheKey] = cacheItem;
             api.warn("%s Cache Size %s", name, size.bytes);
-            if (storage) {
-                storageKey = getStorageKey(cacheKey);
-                storage.set(storageKey, cacheItem.value);
-                api.log("\tlocalStorage put for %s", storageKey);
-                manager.getTotalSize();
-            }
+            storage.put(cacheKey, cacheItem.value);
             change();
         }
 
@@ -107,6 +196,7 @@
                 api.log("\tlocalStorage remove for %s", storageKey);
             }
             api.warn("%s Cache Size %s", name, size.bytes);
+            storage.remove(cacheKey);
             delete memoryCache[cacheKey];
             if (!silent) {
                 change();
@@ -118,6 +208,7 @@
             each(memoryCache, function (cache, key) {
                 remove(key, true);// only fire one event whne we are done.
             });
+            storage.removeAll();
             change();
         }
 
@@ -152,6 +243,7 @@
         }
 
         function change() {
+            onChange(api);
             api.dispatch(cacheEvents.CHANGE, api);
         }
 
@@ -172,7 +264,6 @@
                 value = applyPage(key, value);
             }
             set(key, angular.copy(value));
-//            cleanUp();
         }
 
         function getKey(objOrStr) {
@@ -221,6 +312,16 @@
             }
             return 0;
         }
+//TODO: need to make memoryCache pull from defaultStores ... need to figure out timing of when to pull.
+        function addStores(stores) {
+            // after we add each store. We need to pull from them and populate our memory
+            storage.addStores(stores);
+            memoryCache = storage.getAll();
+        }
+
+        function destroy() {
+            //TODO: destroy cache.
+        }
 
         api.events = cacheEvents;
         api.getConfig = getConfig;
@@ -233,18 +334,20 @@
         api.getCount = getCount;
         api.elapsed = elapsed;
         api.getTime = getTime;
+        api.addStores = addStores;
+        api.getStores = storage.getStores;
+        api.destroy = destroy;
         return api;
     }
 
 
     function ObjectCacheManager($rootScope, addons) {
         var cache = {},
-            localStorage = null;
-
+            defaultStorage = createStore();
         $rootScope.$on(cacheEvents.CHANGE, onCacheChange);
 
         function create(name, config) {
-            var item = cache[name] = cache[name] || new Cache(this, name);
+            var item = cache[name] = cache[name] || new Cache(name, onCacheChange);
             if (config) {
                 item.setConfig(config);
             }
@@ -289,7 +392,7 @@
             return total;
         }
 
-        function onCacheChange(event, cache) {
+        function onCacheChange(cache) {
 
         }
 
@@ -298,15 +401,6 @@
 //TODO: Should this be able to add a store to a config?
 //TODO: default store set on manager. So default can also be a store stack.
         //TODO: (store list/store stack) passed to a single cache will override the default and use these caches instead.
-        function addStore(localStorageManager, methodMap) {
-            //TODO: validate interface to make sure all methdos I use are defined.
-            if (!storage && methodMap.isSupported.apply(localStorageManager)) {
-                this.info("localStorage instantiated");
-                storage = new LocalStorage(localStorageManager, methodMap);
-            } else {
-                this.info("localStorage is not supported");
-            }
-        }
 
         this.create = create;
         this.destroy = destroy;
@@ -315,7 +409,8 @@
         this.clear = clear;
         this.getTotalSize = getTotalSize;
         this.getTotalSizeInBytes = getTotalSizeInBytes;
-        this.addStore = addStore;
+        this.addStores = defaultStorage.addStores;
+        this.getStores = defaultStorage.getStores;
     }
 
     angular.module('ngCache', []).service('cacheManager', ['$rootScope', 'objectKeys', 'sizeUtil', 'dispatcher', 'logDispatcher', function ($rootScope, objectKeys, sizeUtil, dispatcher, logDispatcher) {
