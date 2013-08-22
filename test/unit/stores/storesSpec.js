@@ -18,14 +18,30 @@ describe("localStorage Store", function () {
     });
 
     it("hasKey should return false if the key does not exist", function() {
-
+        expect(store.hasKey('nokey')).toBe(false);
     });
 
     it("hasKey should return true if the key exists", function() {
-
+        store.put('key', 'value');
+        expect(store.hasKey('key')).toBe(true);
     });
 
     it("should be able to put a value to the store", function () {
+        store.put('key', 'value');
+        expect(store.get('key')).toBe('value');
+    });
 
+    it("should remove a value from the store", function() {
+        store.put('key', 'value');
+        store.remove('key');
+        expect(store.get('key')).toBeUndefined();
+    });
+
+    it("should remove all values from the store", function() {
+        store.put('key', 'value');
+        store.put('key1', 'value');
+        store.removeAll();
+        expect(store.get('key')).toBeUndefined();
+        expect(store.get('key1')).toBeUndefined();
     });
 });
