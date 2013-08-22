@@ -75,7 +75,7 @@
             }
 
             var item = localStorage.getItem(_prefix + key);
-            return item && JSON.parse(item) || null;
+            return item && JSON.parse(item) || undefined;
         }
 
         /**

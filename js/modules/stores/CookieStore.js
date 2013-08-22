@@ -6,27 +6,34 @@
         },
         NOT_SUPPORTED = 'Cookies are Not Supported';
 
-    function CookieStore($rootScope) {
+    function CookieStore($rootScope, $cookieStore, $cookies) {
 
         function isSupported() {
+            var cookieEnabled = !!(navigator.cookieEnabled);
+
+            if (typeof navigator.cookieEnabled == "undefined" && !cookieEnabled)
+            {
+                document.cookie="testcookie";
+                cookieEnabled = (document.cookie.indexOf("testcookie") != -1) ? true : false;
+            }
+            return (cookieEnabled);
         }
 
-        function hasKey() {
-        }
-
-        function put() {
-        }
-
-        function get() {
+        function hasKey(key) {
+            return $cookies.hasOwnProperty(key);
         }
 
         function getAll() {
-        }
-
-        function remove() {
+            return $cookies;
         }
 
         function removeAll() {
+            var i;
+            for (i in $cookies) {
+                if ($cookies.hasOwnProperty(i)) {
+                    $cookieStore.remove(i);
+                }
+            }
         }
 
         /**
@@ -41,15 +48,15 @@
 
         this.isSupported = isSupported;
         this.hasKey = hasKey;
-        this.put = put;
-        this.get = get;
+        this.put = $cookieStore.put;
+        this.get = $cookieStore.get;
         this.getAll = getAll;
-        this.remove = remove;
+        this.remove = $cookieStore.remove;
         this.removeAll = removeAll;
     }
 
-    angular.module('ngCookieStore', []).
-        service('cookieStore', ['$rootScope', function ($rootScope) {
-            return new CookieStore($rootScope);
+    angular.module('ngCookieStore', ['ngCookies']).
+        service('cookieStore', ['$rootScope', '$cookieStore', '$cookies', function ($rootScope, $cookieStore, $cookies) {
+            return new CookieStore($rootScope, $cookieStore, $cookies);
         }]);
 }());

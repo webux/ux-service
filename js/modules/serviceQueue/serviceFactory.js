@@ -9,7 +9,7 @@
             delay: 0
         };
 
-    angular.module('ngService').
+    angular.module('uxService').
         factory('$service', ['$serviceQueue', '$resource', function ($serviceQueue, $resource) {
 
             function ServiceFactory(url, paramDefaults, actions, $options) {

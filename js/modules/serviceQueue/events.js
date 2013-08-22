@@ -1,6 +1,6 @@
 (function () {
     'use strict';
-    angular.module('ngService').factory('events', function () {
+    angular.module('uxService').factory('events', function () {
         return function events(instance) {
             instance.events = {
                 LOG: 'serviceQueue::log',

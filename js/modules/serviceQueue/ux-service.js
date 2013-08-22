@@ -187,7 +187,7 @@
         return api;
     }
 
-    angular.module('ngService', ['ngResource', 'addons']).
+    angular.module('uxService', ['ngResource', 'addons']).
         service('$serviceQueue', ['connection', 'queue', 'addons', 'events', 'dispatcher', 'logDispatcher', '$timeout',
             function (connection, queue, addons, events, dispatcher, logDispatcher, $timeout) {
                 var instance = serviceQueue(connection, queue, $timeout),

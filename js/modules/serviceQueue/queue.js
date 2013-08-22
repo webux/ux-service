@@ -9,7 +9,7 @@
         },
         isFunction = angular.isFunction;
 
-    angular.module('ngService').
+    angular.module('uxService').
         factory('queue', ['dispatcher', 'logDispatcher', function (dispatcher, logDispatcher) {
             function queue(array, queueName) {
                 var name = queueName || 'queue',

@@ -15,7 +15,7 @@ describe("cache module", function () {
         expect(cacheObject).toBe(cacheManager.get('test'));
     });
 
-    it("should clear the cache object", function () {
+    it("should removeAll from the cache object", function () {
         var test = cacheManager.get('test'), cleared = false;
         test.removeAll = function () {
             cleared = true;
@@ -92,7 +92,7 @@ describe("cache module", function () {
         describe("bytes", function () {
             var cache;
             beforeEach(function () {
-                cacheManager.clear('test');
+                cacheManager.destroy('test');
                 cache = cacheManager.create('test', {});
             });
 
@@ -125,7 +125,7 @@ describe("cache module", function () {
         describe("count", function () {
             var cache;
             beforeEach(function () {
-                cacheManager.clear('test');
+                cacheManager.destroy('test');
                 cache = cacheManager.create('test', {});
             });
 
@@ -153,7 +153,7 @@ describe("cache module", function () {
         describe("elapsed", function () {
             var cache;
             beforeEach(function () {
-                cacheManager.clear('test');
+                cacheManager.destroy('test');
                 cache = cacheManager.create('test', {});
             });
 
@@ -172,7 +172,7 @@ describe("cache module", function () {
         describe("expired", function () {
             var cache;
             beforeEach(function () {
-                cacheManager.clear('test');
+                cacheManager.destroy('test');
                 cache = cacheManager.create('test', {expireSeconds: -1})
             });
             it("should not be able to get an expired item", function () {
@@ -268,41 +268,80 @@ describe("cache module", function () {
         });
 
         describe("stores", function () {
-            var store;
+            var cache, store;
 
             beforeEach(function () {
+                cacheManager.destroy('test');
                 store = {
                     values: {},
+                    isSupported: function () {
+                        return true;
+                    },
+                    hasKey: function (key) {
+                        return this.values.hasOwnProperty(key);
+                    },
                     put: function (key, value) {
                         this.values[key] = value;
                     },
                     get: function (key) {
                         return this.values[key];
                     },
+                    getAll: function () {
+                        return this.values;
+                    },
                     remove: function(key) {
-                        this.value[key] = null;
+                        this.values[key] = undefined;
+                    },
+                    removeAll: function() {
+                        this.values = {};
                     }
-                }
+                };
+                cache = cacheManager.create('test', {});
+            });
+
+            it("should use the default cache if stores are provided to the cache manager, but not the cache", function() {
+                expect(cache.getStores().length).toBe(0);
+                cacheManager.addStores([store]);
+                expect(cache.getStores().length).toBe(1);
+            });
+
+            it("should be able to create stores by adding them to the cache config", function() {
+                cache = cacheManager.create('storesInConfig', {stores:[store]});
+                expect(cache.getStores().length).toBe(1);
             });
 
             it("should be able to add stores to the cache", function() {
-
+                cache.addStores([store]);
+                expect(cache.getStores().length).toBe(1);
             });
 
             it("should put to all stores added to that cache", function() {
-
+                cache.addStores([store, angular.copy(store)]);
+                cache.set('key', 'value');
+                var stores = cache.getStores();
+                expect(stores[0].get('key')).toBe('value');
+                expect(stores[1].get('key')).toBe('value');
             });
 
-            it("should update the store when the value changes", function() {
-
+            it("should not add a store that is not supported", function() {
+                var notSupported = angular.copy(store);
+                notSupported.isSupported = function() { return false; };
+                cache.addStores([store, notSupported]);
+                expect(cache.getStores().length).toBe(1);
             });
 
             it("should remove from the store", function() {
-
+                cache.addStores([store]);
+                cache.set('key', 'value');
+                cache.remove('key');
+                expect(cache.getStores()[0].get('key')).toBeUndefined();
             });
 
             it("should clear a store", function() {
-
+                cache.addStores([store]);
+                cache.set('key', 'value');
+                cache.removeAll();
+                expect(cache.getStores()[0].get('key')).toBeUndefined();
             });
         });
     });

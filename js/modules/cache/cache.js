@@ -6,6 +6,10 @@
      */
     var objKeys,
         /**
+         * @type {Object}
+         */
+        defaultStorage,
+        /**
          * @type {Function}
          */
         each,
@@ -39,10 +43,16 @@
             CHANGE: 'cache::change'
         },
         storeUtil = function () {
-            var api = {};
+            var api = {},
+                required = ['isSupported', 'hasKey', 'put', 'get', 'getAll', 'remove', 'removeAll'];
 
             function isStore(store) {
-                return (store.isSupported && store.hasKey && store.put && store.get && store.getAll && store.remove && store.removeAll);
+                var errors = [], i = 0, len = required.length;
+                while (i < len) {
+                    store.hasOwnProperty(required[i]) || errors.push(required[i]);
+                    i += 1;
+                }
+                return errors.length ? errors : true;
             }
 
             function areStores(stores) {
@@ -54,8 +64,19 @@
                 return result;
             }
 
+            function count(obj) {
+                var c = 0, i;
+                for (i in obj) {
+                    if (obj.hasOwnProperty(i)) {
+                        c += 1;
+                    }
+                }
+                return c;
+            }
+
             api.isStore = isStore;
             api.areStores = areStores;
+            api.count = count;
             return api;
         }();
 
@@ -64,17 +85,33 @@
             storage = {};
 
         function addStores(storeListOrStore) {
-            if (storeListOrStore instanceof Array && storeUtil.areStores(storeListOrStore)) {
-                stores = stores.concat(storeListOrStore);
-            } else if (storeUtil.isStore(storeListOrStore)) {
-                stores.push(storeListOrStore);
-            } else {
-                throw new Error("Invalid Store API. Store expects every store to have isSupported, hasKey, put, get, getAll, remove, and removeAll methods defined.");
+            var isArray = storeListOrStore instanceof Array, errors;
+            if (isArray && (errors = storeUtil.areStores(storeListOrStore)) === true) {
+                addSupportedStores(storeListOrStore);
+            } else if (!isArray && (errors = storeUtil.isStore(storeListOrStore)) === true) {
+                addSupportedStores([storeListOrStore]);
+            } else if (errors) {
+                throw new Error("Invalid Store API. Store missing methods (" + errors.join(", ") + ").");
+            }
+        }
+
+        function addSupportedStores(storesList) {
+            var i = 0, len = storesList.length, store;
+            while (i < len) {
+                store = storesList[i];
+                if (store.isSupported()) {
+                    stores.push(store); // only stores supported will be added to the list.
+                }
+                i += 1;
             }
         }
 
         function getStores() {
-            return storage;
+            return stores;
+        }
+
+        function hasStores() {
+            return !!(stores.length);
         }
 
         function put(key, value) {
@@ -126,6 +163,7 @@
             }
         }
 
+        storage.hasStores = hasStores;
         storage.addStores = addStores;
         storage.getStores = getStores;
         storage.put = put;
@@ -160,18 +198,30 @@
             return name + cacheKey;
         }
 
+        function getStorage() {
+            if (storage.hasStores()) {
+                return storage;
+            }
+            return defaultStorage;
+        }
+
         function getConfig() {
             return config;
         }
 
         function setConfig(cfg) {
             angular.extend(config, cfg);
+            if (config.stores) {
+                addStores(config.stores);
+                config.stores = undefined;
+            }
+            memoryCache = getStorage().getAll() || {};
         }
 
         function get(cacheKey) {
             var result = memoryCache[cacheKey];
             if (result === undefined) {
-                result = storage.get(cacheKey);
+                result = getStorage().get(cacheKey);
             }
             return result;
         }
@@ -182,21 +232,15 @@
             add(cacheItem);
             memoryCache[cacheKey] = cacheItem;
             api.warn("%s Cache Size %s", name, size.bytes);
-            storage.put(cacheKey, cacheItem.value);
+            getStorage().put(cacheKey, cacheItem.value);
             change();
         }
 
         function remove(cacheKey, silent) {
-            var cacheItem = memoryCache[cacheKey],
-                storageKey;
+            var cacheItem = memoryCache[cacheKey];
             subtract(cacheItem);
-            if (storage) {
-                storageKey = getStorageKey(cacheKey);
-                storage.remove(storageKey);
-                api.log("\tlocalStorage remove for %s", storageKey);
-            }
             api.warn("%s Cache Size %s", name, size.bytes);
-            storage.remove(cacheKey);
+            getStorage().remove(cacheKey);
             delete memoryCache[cacheKey];
             if (!silent) {
                 change();
@@ -208,7 +252,7 @@
             each(memoryCache, function (cache, key) {
                 remove(key, true);// only fire one event whne we are done.
             });
-            storage.removeAll();
+            getStorage().removeAll();
             change();
         }
 
@@ -312,15 +356,29 @@
             }
             return 0;
         }
-//TODO: need to make memoryCache pull from defaultStores ... need to figure out timing of when to pull.
+
+        function getStores() {
+            return getStorage().getStores();
+        }
+
         function addStores(stores) {
             // after we add each store. We need to pull from them and populate our memory
             storage.addStores(stores);
-            memoryCache = storage.getAll();
+            memoryCache = storage.getAll() || {};
         }
 
         function destroy() {
-            //TODO: destroy cache.
+            var i;
+            for (i in api) {
+                if (api.hasOwnProperty(i)) {
+                    api[i] = null;
+                }
+            }
+            api = null;
+            storage = null;
+            memoryCache = null;
+            config = null;
+            size = null;
         }
 
         api.events = cacheEvents;
@@ -335,15 +393,15 @@
         api.elapsed = elapsed;
         api.getTime = getTime;
         api.addStores = addStores;
-        api.getStores = storage.getStores;
+        api.getStores = getStores;
         api.destroy = destroy;
         return api;
     }
 
 
     function ObjectCacheManager($rootScope, addons) {
-        var cache = {},
-            defaultStorage = createStore();
+        var cache = {};
+        defaultStorage = createStore();
         $rootScope.$on(cacheEvents.CHANGE, onCacheChange);
 
         function create(name, config) {
@@ -422,5 +480,12 @@
         logDispatcher(result);
         return result;
     }]);
+
+    angular.module('ngCache').factory('$store', function () {
+//TODO: need to decide what store to use when using $store. a store must be provided. Should default be localStorage?
+        return function (name, config) {
+            return ObjectCacheManager.create(name)
+        }
+    });
 
 }());

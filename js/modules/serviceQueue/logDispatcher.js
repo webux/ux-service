@@ -3,7 +3,7 @@
 
     var toArray = angular.util.toArray;
 
-    angular.module('ngService').
+    angular.module('uxService').
         factory('logDispatcher', ['$rootScope', function ($rootScope) {
             function logDispatcher(dispatcher) {
                 var scope = dispatcher.scope || $rootScope;

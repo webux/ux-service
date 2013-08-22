@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    angular.module('ngService').factory('dispatcher', ['$rootScope', function ($rootScope) {
+    angular.module('uxService').factory('dispatcher', ['$rootScope', function ($rootScope) {
         return function dispatcher(instance) {
             var scope = (instance.scope || $rootScope),
                 method = instance.scope ? '$emit' : '$broadcast';

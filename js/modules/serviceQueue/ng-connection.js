@@ -169,7 +169,7 @@
         return api;
     }
 
-    angular.module('ngService').
+    angular.module('uxService').
         service('connection', ['dispatcher', 'logDispatcher',
             function (dispatcher, logDispatcher) {
                 return connection(dispatcher, logDispatcher);
