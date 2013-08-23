@@ -10,7 +10,7 @@
         isFunction = angular.isFunction;
 
     angular.module('uxService').
-        factory('queue', ['dispatcher', 'logDispatcher', function (dispatcher, logDispatcher) {
+        factory('queue', ['objectKeys', 'dispatcher', 'logDispatcher', function (objectKeys, dispatcher, logDispatcher) {
             function queue(array, queueName) {
                 var name = queueName || 'queue',
                     api = {
@@ -48,42 +48,6 @@
                     }
                 }
 
-                function selectedItem(item) {
-                    if (item !== undefined) {
-                        var index = ary.indexOf(item);
-                        if (index !== -1) {
-                            selItem = item;
-                            selIndex = index;
-                            api.log(events.LOG, "\t%s set selected item", name);
-                        } else {
-                            reset();
-                        }
-                    }
-                    return selItem;
-                }
-
-                function selectedIndex(value) {
-                    if (value !== undefined) {
-                        if (ary.hasOwnProperty(value)) {
-                            value = parseInt(value, 10);
-                            selIndex = value;
-                            selItem = ary[selIndex];
-                            api.log(events.LOG, "\t%s set selected index", name);
-                        } else {
-                            reset();
-                        }
-                    }
-                    return selIndex;
-                }
-
-                function next() {
-                    api.log(events.LOG, "\tnext");
-                }
-
-                function prev() {
-                    api.log(events.LOG, "\tprev");
-                }
-
                 function first() {
                     return ary[0];
                 }
@@ -95,7 +59,7 @@
                 function getItemWith(property, value) {
                     var i = 0, len = ary.length, result = false;
                     while (i < len) {
-                        result = getValue(ary[i], property);
+                        result = objectKeys.walkPath(ary[i], property);
                         if (result === value) {
                             return ary[i];
                         }
@@ -104,24 +68,8 @@
                     return null;
                 }
 
-                function getValue(obj, property) {
-                    var properties = property.split('.'), prop = properties.shift();
-                    while (properties.length && obj.hasOwnProperty(prop)) {
-                        obj = obj[prop];
-                        prop = properties.shift();
-                    }
-                    if (isFunction(obj[prop])) {
-                        return obj[prop]();
-                    }
-                    return obj[prop];
-                }
-
-                api.selectedItem = selectedItem;
-                api.selectedIndex = selectedIndex;
                 api.add = add;
                 api.remove = remove;
-                api.next = next;
-                api.prev = prev;
                 api.data = data;
                 api.first = first;
                 api.length = length;

@@ -1,6 +1,6 @@
 (function () {
     'use strict';
-    angular.util = angular.util || {};
+
     function toArray(obj) {
         var result = [], i = 0, len = obj.length;
         while (i < len) {
@@ -10,5 +10,7 @@
         return result;
     }
 
-    angular.util.toArray = toArray;
+    window.ux = window.ux || {};
+    window.ux.arrayUtil = window.ux.arrayUtil || {};
+    window.ux.arrayUtil.toArray = toArray;
 }());

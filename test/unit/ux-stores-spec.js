@@ -15,6 +15,10 @@ describe("Stores", function () {
                 store.removeAll();
             });
 
+            afterEach(function() {
+                store.removeAll();
+            });
+
             it("should have the api of isSupported, put, get, getAll, remove, removeAll", function () {
                 expect(store.isSupported).toBeDefined();
                 expect(store.hasKey).toBeDefined();

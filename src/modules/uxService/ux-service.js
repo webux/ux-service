@@ -2,7 +2,7 @@
     'use strict';
 
     var isFunction = angular.isFunction;
-    var toArray = angular.util.toArray;
+    var toArray = ux.arrayUtil.toArray;
 
     function extractParams(action, args) {
         var a1 = args[0], a2 = args[1], a3 = args[2], a4 = args[3],
@@ -58,7 +58,7 @@
             var value = getOptionValue(service.$options.cacheBust);// if they want to provide their own cache buster.
             if (value) {
                 if (typeof value === 'boolean') {
-                    api.params.params.r = performance.now();
+                    api.params.params.r = Date.now();
                 } else if (typeof value === 'object') {
                     angular.extend(api.params.params, value);
                 } else {
@@ -110,7 +110,7 @@
         return api;
     }
 
-    function serviceQueue(connection, queue, $timeout) {
+    function uxServiceQueue(connection, queue, $timeout) {
         var api = {name: 'serviceQueue'},
             _config = {
 
@@ -187,17 +187,6 @@
         return api;
     }
 
-    angular.module('uxService', ['ngResource', 'addons']).
-        service('$serviceQueue', ['connection', 'queue', 'addons', 'events', 'dispatcher', 'logDispatcher', '$timeout',
-            function (connection, queue, addons, events, dispatcher, logDispatcher, $timeout) {
-                var instance = serviceQueue(connection, queue, $timeout),
-                //TODO: This needs defined externally.
-                    addonList = "";//"eventLogger";
-                events(instance);
-                dispatcher(instance);
-                logDispatcher(instance);
-                addons(instance, addonList);
-                instance.init();
-                return instance;
-            }]);
+    window.ux = window.ux || {};
+    window.ux.serviceQueue = uxServiceQueue;
 }());

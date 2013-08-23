@@ -1,4 +1,4 @@
-describe("cache module", function () {
+describe("ux-cache module", function () {
     var injector = angular.injector(['app']),
         cacheManager = injector.get('cacheManager');
 
@@ -311,7 +311,7 @@ describe("cache module", function () {
             });
 
             it("should be able to add stores to the cache", function() {
-                cache.addStores([store]);
+                cache.addStores(store);
                 expect(cache.getStores().length).toBe(1);
             });
 
@@ -343,6 +343,7 @@ describe("cache module", function () {
                 cache.removeAll();
                 expect(cache.getStores()[0].get('key')).toBeUndefined();
             });
+
         });
     });
 });

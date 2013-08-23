@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html data-ng-app="app">
+<head>
+    <title>Servce Queue unit tests.</title>
+    <link rel="stylesheet" type="text/css" href="unit/lib/jasmine.css">
+    <script src="unit/lib/jasmine.js"></script>
+    <script src="unit/lib/json2.js"></script>
+    <script src="unit/lib/jasmine-html.js"></script>
+    <script src="unit/lib/boot.js"></script>
+    <script src="../lib/angular.js"></script>
+    <script src="../lib/angular-mocks.js"></script>
+
+    <!-- modules to test -->
+    <script type="text/javascript" data-main="js/main" src="../lib/angular.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../lib/angular-resource.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../lib/angular-cookies.js"></script>
+
+    <!--// UX //-->
+    <script type="text/javascript" data-main="js/main" src="../src/modules/events/ux-dispatcher.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/cache/ux-object-keys.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/cache/ux-size-util.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/cache/ux-cache.js"></script>
+
+    <script type="text/javascript" data-main="js/main" src="../src/modules/cache/angular-ux-cache.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/stores/ux-local-storage.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/stores/ux-cookie-store.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/uxService/ux-service-util.js"></script>
+
+    <script type="text/javascript" data-main="js/main" src="../src/modules/uxService/ux-service.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/uxService/angular-ux-service.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/uxService/ux-connection.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/uxService/ux-queue.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/uxService/ux-service-factory.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/uxService/ux-service-events.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/events/angular-ux-dispatcher.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/logger/ux-log-dispatcher.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/addons/angular-ux-addons.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/logger/ux-logger.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/logger/ux-event-logger.js"></script>
+
+    <!-- setup -->
+    <script>
+        angular.module('app', ['eventLogger', 'uxService', 'uxCache', 'ngLocalStorage', 'ngCookieStore']).
+            run(['$injector', 'eventLogger', '$serviceQueue', 'connection', 'queue', 'logDispatcher', function ($injector, eventLogger, $serviceQueue, connection, queue, logDispatcher) {
+//                logDispatcher.enableLogging(1);
+//                eventLogger('serviceQueue', $serviceQueue.events, 'green', eventLogger.levels.DEBUG);
+//                eventLogger('connection', connection.events, 'orange', eventLogger.levels.INFO);
+//                eventLogger('queue', queue.events, 'teal', eventLogger.levels.DEBUG);
+                $serviceQueue.config({
+                    connection: {
+                        waitAfterSuccess: 5,
+                        url: 'json/heartbeat.json'
+                    }
+                });
+
+                // make debugging easier.
+                window._i = $injector.get;
+            }]);
+    </script>
+
+    <!-- tests -->
+    <script src="unit/ux-object-keys-spec.js"></script>
+    <script src="unit/ux-cache-spec.js"></script>
+    <script src="unit/ux-stores-spec.js"></script>
+    <script src="unit/ux-queue-spec.js"></script>
+
+</head>
+<body>
+
+</body>
+</html>

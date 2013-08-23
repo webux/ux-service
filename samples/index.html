@@ -4,31 +4,53 @@
     <title>AngularJS Service Queue Example</title>
     <link rel="stylesheet" type="text/css" href="css/main.css">
     <!--<script type="text/javascript" data-main="js/main" src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>-->
-    <script type="text/javascript" data-main="js/main" src="js/lib/angular.js"></script>
-    <script type="text/javascript" data-main="js/main" src="js/lib/angular-resource.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../lib/angular.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../lib/angular-resource.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../lib/angular-cookies.js"></script>
 
-    <script type="text/javascript" data-main="js/main" src="js/modules/cache/cache.js"></script>
-    <script type="text/javascript" data-main="js/main" src="js/modules/cache/objectKeys.js"></script>
-    <script type="text/javascript" data-main="js/main" src="js/modules/cache/sizeUtil.js"></script>
-    <script type="text/javascript" data-main="js/main" src="js/modules/stores/localStorageStore.js"></script>
-    <script type="text/javascript" data-main="js/main" src="js/modules/stores/cookieStore.js"></script>
-    <script type="text/javascript" data-main="js/main" src="js/modules/serviceQueue/util.js"></script>
-    <script type="text/javascript" data-main="js/main" src="js/modules/performance/performance.js"></script>
+    <!--// UX //-->
+    <script type="text/javascript" data-main="js/main" src="../src/modules/events/ux-dispatcher.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/cache/ux-object-keys.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/cache/ux-cache.js"></script>
 
-    <script type="text/javascript" data-main="js/main" src="js/modules/serviceQueue/ux-service.js"></script>
-    <script type="text/javascript" data-main="js/main" src="js/modules/serviceQueue/ng-connection.js"></script>
-    <script type="text/javascript" data-main="js/main" src="js/modules/serviceQueue/queue.js"></script>
-    <script type="text/javascript" data-main="js/main" src="js/modules/serviceQueue/serviceFactory.js"></script>
-    <script type="text/javascript" data-main="js/main" src="js/modules/serviceQueue/events.js"></script>
-    <script type="text/javascript" data-main="js/main" src="js/modules/serviceQueue/dispatcher.js"></script>
-    <script type="text/javascript" data-main="js/main" src="js/modules/serviceQueue/logDispatcher.js"></script>
-    <script type="text/javascript" data-main="js/main" src="js/modules/addons/addons.js"></script>
-    <script type="text/javascript" data-main="js/main" src="js/modules/logger/SimpleLogger.js"></script>
-    <script type="text/javascript" data-main="js/main" src="js/modules/logger/eventLogger.js"></script>
-    <script src="js/app.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/cache/angular-ux-cache.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/cache/ux-size-util.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/stores/ux-local-storage.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/stores/ux-cookie-store.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/uxService/ux-service-util.js"></script>
+
+    <script type="text/javascript" data-main="js/main" src="../src/modules/uxService/ux-service.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/uxService/angular-ux-service.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/uxService/ux-connection.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/uxService/ux-queue.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/uxService/ux-service-factory.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/uxService/ux-service-events.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/events/angular-ux-dispatcher.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/logger/ux-log-dispatcher.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/addons/angular-ux-addons.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/logger/ux-logger.js"></script>
+    <script type="text/javascript" data-main="js/main" src="../src/modules/logger/ux-event-logger.js"></script>
     <!--// END ADDONS //-->
     <!--// controllers //-->
     <script>
+
+        angular.module('app', ['eventLogger', 'uxService', 'uxCache', 'ngLocalStorage', 'ngCookieStore']).
+            run(['$injector', 'eventLogger', '$serviceQueue', 'connection', 'queue', 'logDispatcher', function ($injector, eventLogger, $serviceQueue, connection, queue, logDispatcher) {
+                logDispatcher.enableLogging(1);
+                eventLogger('serviceQueue', $serviceQueue.events, 'green', eventLogger.levels.DEBUG);
+                eventLogger('connection', connection.events, 'orange', eventLogger.levels.INFO);
+                eventLogger('queue', queue.events, 'teal', eventLogger.levels.DEBUG);
+                $serviceQueue.config({
+                    connection: {
+                        waitAfterSuccess: 5,
+                        url: 'json/heartbeat.json'
+                    }
+                });
+
+                // make debugging easier.
+                window._i = $injector.get;
+            }]);
+
         function CtrlA($scope, $service, cacheManager) {
             $scope.status = "init";
 
@@ -79,7 +101,7 @@
                                     blocking: true,
                                     //EACH OPTION can be a value or a function that returns it.
                                     cacheBust: function (serviceCall) {
-                                        return {a: performance.now() };
+                                        return {a: Date.now() };
                                     },
                                     delay: 1000 // used to prove they are happening in order.
                                 }

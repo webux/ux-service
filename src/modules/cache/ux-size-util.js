@@ -1,6 +1,6 @@
 (function () {
     'use strict';
-    function SizeUtility() {
+    function SizeUtil() {
 
         function getSize(obj) {
             return getBytesSize(sizeOfObject(obj));
@@ -46,7 +46,9 @@
             if (value && typeof value == 'object') {
                 delete value['__visited__'];
                 for (var i in value) {
-                    clearReferenceTo(value[i]);
+                    if (value.hasOwnProperty(i)) {
+                        clearReferenceTo(value[i]);
+                    }
                 }
             }
         }
@@ -70,7 +72,6 @@
         return this;
     }
 
-    angular.module('ngCache').service('sizeUtil', function () {
-        return new SizeUtility();
-    });
+    window.ux = window.ux || {};
+    window.ux.sizeUtil = new SizeUtil();
 }());

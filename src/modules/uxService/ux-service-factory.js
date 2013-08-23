@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    var toArray = angular.util.toArray,
+    var toArray = ux.arrayUtil.toArray,
         extend = angular.extend,
         defaultOptions = {
             blocking: false,

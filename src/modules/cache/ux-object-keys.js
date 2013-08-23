@@ -148,8 +148,7 @@
         this.filter = filter;
     }
 
-    angular.module('ngCache').service('objectKeys', function () {
-        return new ObjectKeys();
-    });
+    window.ux = window.ux || {};
+    window.ux.objectKeys = new ObjectKeys();
 
 }());

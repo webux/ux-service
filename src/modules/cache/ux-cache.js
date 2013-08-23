@@ -1,10 +1,12 @@
 (function () {
     'use strict';
 
+    window.ux = window.ux || {};
+
     /**
      * @type {Object}
      */
-    var objKeys,
+    var objectKeys = ux.objectKeys,
         /**
          * @type {Object}
          */
@@ -12,11 +14,11 @@
         /**
          * @type {Function}
          */
-        each,
+        each = ux.objectKeys.each,
         /**
          * @type {Object
          */
-        util,
+        util = ux.sizeUtil,
         /**
          * @type {Object}
          */
@@ -24,10 +26,10 @@
             enabled: true,
             paramsFilter: null, // can be object or function to filter params.
             pagination: null,
-//            pagination: {
-//                offset: '',
-//                list:''
-//            },
+            //            pagination: {
+            //                offset: '',
+            //                list:''
+            //            },
             countLimit: 0,
             expireSeconds: 0,
             memoryLimit: 0
@@ -194,10 +196,6 @@
         // apply defaults.
         angular.extend(config, cacheDefaultConfig);
 
-        function getStorageKey(cacheKey) {
-            return name + cacheKey;
-        }
-
         function getStorage() {
             if (storage.hasStores()) {
                 return storage;
@@ -314,8 +312,8 @@
             if (typeof objOrStr === 'string') {
                 return objOrStr;
             }
-            objOrStr = objKeys.filter(objOrStr, config.paramsFilter);
-            return objKeys.objectToKey(objOrStr);
+            objOrStr = objectKeys.filter(objOrStr, config.paramsFilter);
+            return objectKeys.objectToKey(objOrStr);
         }
 
         function isExpired(cacheItem) {
@@ -332,17 +330,17 @@
             var offset = getPaginationOffset(value), oldValue, oldList, newList, i, len;
             if (offset) {
                 oldValue = getCache(key);
-                oldList = objKeys.walkPath(oldValue, config.pagination.list);
+                oldList = objectKeys.walkPath(oldValue, config.pagination.list);
                 if (oldList.length >= offset) {
                     i = 0;
-                    newList = objKeys.walkPath(value, config.pagination.list);
+                    newList = objectKeys.walkPath(value, config.pagination.list);
                     len = newList.length;
                     while (i < len) {
                         oldList[i + offset] = newList[i];
                         i += 1;
                     }
                     value = angular.copy(value);
-                    objKeys.setPathValue(value, config.pagination.list, oldList);
+                    objectKeys.setPathValue(value, config.pagination.list, oldList);
                 } else {
                     throw new Error("Pagination offset start is at %s, however the list only has %s value in it.");
                 }
@@ -352,7 +350,7 @@
 
         function getPaginationOffset(data) {
             if (typeof data === "object" && config.pagination) { // always select the first page if getting a cached page response.
-                return parseInt(objKeys.walkPath(data, config.pagination.offset), 10);
+                return parseInt(objectKeys.walkPath(data, config.pagination.offset), 10);
             }
             return 0;
         }
@@ -399,17 +397,16 @@
     }
 
 
-    function ObjectCacheManager($rootScope, addons) {
+    function ObjectCacheManager() {
         var cache = {};
         defaultStorage = createStore();
-        $rootScope.$on(cacheEvents.CHANGE, onCacheChange);
 
         function create(name, config) {
             var item = cache[name] = cache[name] || new Cache(name, onCacheChange);
             if (config) {
                 item.setConfig(config);
             }
-            return applyAddons(item, addons);
+            return applyAddons(item, [ux.dispatcher, ux.logDispatcher]);
         }
 
         function applyAddons(item, addons) {
@@ -454,11 +451,7 @@
 
         }
 
-//TODO: this should be called stores.
-//TODO: setup a directory with a few stores examples localStorage, redis, mongodb, phonegap
-//TODO: Should this be able to add a store to a config?
-//TODO: default store set on manager. So default can also be a store stack.
-        //TODO: (store list/store stack) passed to a single cache will override the default and use these caches instead.
+        //TODO: need to make option for a cache to not persist to a store. So do not use the defaultStorage even if it is availalble because we want a memrory only cache.
 
         this.create = create;
         this.destroy = destroy;
@@ -471,21 +464,5 @@
         this.getStores = defaultStorage.getStores;
     }
 
-    angular.module('ngCache', []).service('cacheManager', ['$rootScope', 'objectKeys', 'sizeUtil', 'dispatcher', 'logDispatcher', function ($rootScope, objectKeys, sizeUtil, dispatcher, logDispatcher) {
-        each = objectKeys.each;
-        util = sizeUtil;
-        var result = new ObjectCacheManager($rootScope, [dispatcher, logDispatcher]);
-        objKeys = objectKeys;
-        dispatcher(result);
-        logDispatcher(result);
-        return result;
-    }]);
-
-    angular.module('ngCache').factory('$store', function () {
-//TODO: need to decide what store to use when using $store. a store must be provided. Should default be localStorage?
-        return function (name, config) {
-            return ObjectCacheManager.create(name)
-        }
-    });
-
+    window.ux.Cache = ObjectCacheManager;
 }());
